@@ -407,6 +407,10 @@ class PhotoService {
 
   Future<void> delete(PhotoModel photo) => ref.read(photoRepositoryProvider).delete(photo);
 
+  /// Permanently deletes all photos stored by the app. Copies already saved
+  /// to the phone's gallery are not touched.
+  Future<int> deleteAll() => ref.read(photoRepositoryProvider).deleteAll();
+
   // ----------------------------------------------------------------- share / export
 
   String _niceName(PhotoModel photo, {String suffix = ''}) =>

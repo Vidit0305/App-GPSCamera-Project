@@ -7,20 +7,21 @@ import '../../../app/router.dart';
 import '../../../app/theme/colors.dart';
 import '../../../core/permissions/permission_flows.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../data/models/location_model.dart';
 import '../../../shared/widgets/common.dart';
 import '../../location/services/location_controller.dart';
 import '../../location/services/location_service.dart';
 
-/// Live GPS / address status with clear provenance labels.
+/// Live location with clear labels for where the data comes from.
 class LocationStatusCard extends ConsumerWidget {
   const LocationStatusCard({super.key});
 
-  Future<void> _selectManually(BuildContext context, WidgetRef ref, LocationModel? initial) async {
+  Future<void> _pickOnMap(BuildContext context, WidgetRef ref, LocationModel? initial) async {
     final picked = await context.push<LocationModel>(Routes.mapLocation, extra: initial);
     if (picked != null) {
       await ref.read(locationControllerProvider.notifier).setManual(picked);
-      if (context.mounted) showSnack(context, 'Manual location will be used for new photos.');
+      if (context.mounted) showSnack(context, 'New photos will use the location you picked.');
     }
   }
 
@@ -29,204 +30,199 @@ class LocationStatusCard extends ConsumerWidget {
     final st = ref.watch(locationControllerProvider);
     final settings = ref.watch(settingsProvider);
     final theme = Theme.of(context);
-    final status = context.status;
+    final scheme = theme.colorScheme;
     final ctrl = ref.read(locationControllerProvider.notifier);
 
     final manual = st.manual;
     final live = st.live;
     final shown = manual ?? live ?? st.lastKnown;
+    final granted = st.permission == LocationPermissionState.granted;
 
-    Widget header() {
-      final (label, tone, icon) = manual != null
-          ? ('Manual location', ChipTone.info, Icons.edit_location_alt_outlined)
-          : switch (st.permission) {
-              LocationPermissionState.granted when live != null && st.weakSignal =>
-                ('Weak GPS signal', ChipTone.warning, Icons.gps_not_fixed),
-              LocationPermissionState.granted when live != null => ('GPS active', ChipTone.success, Icons.gps_fixed),
-              LocationPermissionState.granted when st.tracking => ('Acquiring GPS…', ChipTone.info, Icons.gps_not_fixed),
-              LocationPermissionState.granted => ('GPS paused', ChipTone.neutral, Icons.gps_off),
-              LocationPermissionState.serviceDisabled => ('Location off', ChipTone.error, Icons.location_off),
-              LocationPermissionState.denied ||
-              LocationPermissionState.deniedForever =>
-                ('Permission denied', ChipTone.error, Icons.location_disabled),
-              LocationPermissionState.unknown => ('Not enabled', ChipTone.neutral, Icons.location_searching),
-            };
-      return Row(
+    final (label, tone) = manual != null
+        ? ('Picked on map', ChipTone.info)
+        : !granted
+            ? ('Off', ChipTone.neutral)
+            : live == null
+                ? (st.tracking ? 'Searching…' : 'Paused', ChipTone.neutral)
+                : st.weakSignal
+                    ? ('Weak signal', ChipTone.warning)
+                    : ('Live GPS', ChipTone.success);
+
+    final children = <Widget>[
+      Row(
         children: [
-          Icon(Icons.place_outlined, color: theme.colorScheme.secondary),
-          const SizedBox(width: 8),
-          Expanded(child: Text('Current location', style: theme.textTheme.titleMedium)),
-          StatusChip(label: label, tone: tone, icon: icon),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: scheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.location_on_rounded, color: scheme.secondary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text('Your location', style: theme.textTheme.titleMedium)),
+          StatusChip(label: label, tone: tone),
         ],
-      );
-    }
+      ),
+      const SizedBox(height: 16),
+    ];
 
-    final children = <Widget>[header(), const SizedBox(height: 14)];
-
-    // ---- permission / service problems
-    if (manual == null && st.permission != LocationPermissionState.granted) {
+    // ---- No permission and nothing picked manually
+    if (manual == null && !granted) {
       final msg = switch (st.permission) {
-        LocationPermissionState.serviceDisabled =>
-          'Location services are turned off. Turn them on to add GPS data, or choose a location manually.',
-        LocationPermissionState.deniedForever =>
-          'Location permission was denied. Enable it in system settings, or choose a location manually.',
-        _ => 'Allow location access to stamp photos with GPS coordinates, altitude and address.',
+        LocationPermissionState.serviceDisabled => 'Location is turned off on this phone.',
+        LocationPermissionState.deniedForever => 'Location access is blocked. You can allow it in system settings.',
+        _ => 'Allow location so your photos show where they were taken.',
       };
-      children.add(InfoBanner(message: msg, tone: ChipTone.warning, icon: Icons.location_disabled_outlined));
-      children.add(const SizedBox(height: 12));
-      children.add(Row(children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: () => ensureLocationPermission(context, ref),
-            icon: const Icon(Icons.my_location, size: 18),
-            label: Text(st.permission == LocationPermissionState.serviceDisabled ? 'Turn on' : 'Allow location'),
+      children.addAll([
+        Text(msg, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 14),
+        Row(children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: hx(() => ensureLocationPermission(context, ref)),
+              icon: const Icon(Icons.my_location, size: 18),
+              label: Text(st.permission == LocationPermissionState.serviceDisabled ? 'Turn on' : 'Allow'),
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _selectManually(context, ref, null),
-            icon: const Icon(Icons.map_outlined, size: 18),
-            label: const Text('Select on map'),
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: hx(() => _pickOnMap(context, ref, null)),
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: const Text('Pick on map'),
+            ),
           ),
-        ),
-      ]));
+        ]),
+      ]);
+      return AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
     }
 
-    if (manual != null) {
-      children.add(InfoBanner(
-        message: 'New photos use this manually selected location, not the device GPS.',
-        tone: ChipTone.info,
-        icon: Icons.edit_location_alt_outlined,
-        action: TextButton(onPressed: () => ctrl.setManual(null), child: const Text('Use GPS')),
-      ));
-      children.add(const SizedBox(height: 12));
-    }
-
-    if (shown == null && st.permission == LocationPermissionState.granted && manual == null) {
+    // ---- Waiting for the first fix
+    if (shown == null) {
       children.add(Row(children: [
         const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            st.tracking
-                ? 'Acquiring GPS fix… this can take longer indoors.'
-                : (st.error ?? 'GPS is paused.'),
-            style: theme.textTheme.bodyMedium,
+            st.error ?? 'Finding your position… this can take a little longer indoors.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
       ]));
+      return AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
     }
 
-    if (shown != null) {
-      final isStale = manual == null && live == null;
-      if (isStale) {
-        children.add(InfoBanner(
-          message: 'Showing the last known position'
-              '${shown.detectedAt != null ? ' (${Fmt.relative(shown.detectedAt!)})' : ''}. '
-              'Waiting for a live GPS fix.',
-          tone: ChipTone.warning,
-          icon: Icons.history,
-        ));
-        children.add(const SizedBox(height: 12));
-      }
-      if (shown.isMocked) {
-        children.add(const InfoBanner(
-          message: 'The device reports a mock (simulated) location provider.',
-          tone: ChipTone.error,
-          icon: Icons.warning_amber_rounded,
-        ));
-        children.add(const SizedBox(height: 12));
-      }
-
-      // Address block
-      final title = shown.shortAddress;
-      children.add(Text(
-        title.isNotEmpty ? title : 'Address not available',
-        style: theme.textTheme.titleLarge?.copyWith(color: title.isEmpty ? theme.colorScheme.onSurfaceVariant : null),
-      ));
-      final area = [shown.area, shown.street].whereType<String>().where((e) => e.isNotEmpty).join(' · ');
-      if (area.isNotEmpty) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(area, style: theme.textTheme.bodySmall),
-        ));
-      }
-      if (manual == null) children.add(_AddressStatusLine(st: st));
-      children.add(const SizedBox(height: 14));
-
-      final grid = <(String, String)>[
-        ('Latitude', shown.latitude == null ? '—' : Fmt.latitude(shown.latitude!, settings.coordinateFormat)),
-        ('Longitude', shown.longitude == null ? '—' : Fmt.longitude(shown.longitude!, settings.coordinateFormat)),
-        ('Altitude', Fmt.altitude(shown.altitude, settings.altitudeUnit)),
-        ('GPS accuracy', manual != null ? 'Not applicable' : Fmt.accuracy(shown.accuracy, settings.distanceUnit)),
-        if (manual == null && shown.speed != null) ('Speed', Fmt.speed(shown.speed, settings.distanceUnit)),
-        if (manual == null && shown.heading != null) ('Heading', Fmt.heading(shown.heading)),
-        ('City', shown.city ?? shown.locality ?? '—'),
-        ('Country', shown.country ?? '—'),
-      ];
-      children.add(LayoutBuilder(builder: (context, c) {
-        final w = (c.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          children: [
-            for (final (k, v) in grid)
-              SizedBox(
-                width: w,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(k, style: theme.textTheme.labelSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      v,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: k == 'GPS accuracy' && (shown.accuracy ?? 0) > 50 ? status.warning : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        );
-      }));
-      if (manual == null && st.weakSignal) {
-        children.add(const SizedBox(height: 12));
-        children.add(const InfoBanner(
-          message: 'Low GPS accuracy. Keep the app open with a clear view of the sky – accuracy keeps improving. '
-              'You can still take photos.',
-          tone: ChipTone.warning,
-          icon: Icons.gps_not_fixed,
-        ));
-      }
-      children.add(const SizedBox(height: 12));
-      children.add(Row(
-        children: [
-          Text('Source: ${shown.source.label}', style: theme.textTheme.bodySmall),
-          if (shown.detectedAt != null) ...[
-            const Text(' · '),
-            Text(Fmt.timeShort(shown.detectedAt!, settings), style: theme.textTheme.bodySmall),
-          ],
-          const Spacer(),
-          TextButton.icon(
-            onPressed: () => _selectManually(context, ref, shown),
-            icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-            label: const Text('Change'),
-          ),
-        ],
-      ));
+    // ---- Location available
+    final title = shown.shortAddress;
+    children.add(Text(
+      title.isNotEmpty ? title : 'Address not available',
+      style: theme.textTheme.titleLarge?.copyWith(color: title.isEmpty ? scheme.onSurfaceVariant : null),
+    ));
+    final sub = [shown.area, shown.street].whereType<String>().where((e) => e.isNotEmpty).join(' · ');
+    if (sub.isNotEmpty) {
+      children.add(Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub, style: theme.textTheme.bodySmall)));
     }
+    if (manual == null) children.add(_AddressStatusLine(st: st));
+    children.add(const SizedBox(height: 14));
 
-    children.add(const Divider(height: 20));
-    children.add(Row(children: [
-      Icon(Icons.verified_user_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
-      const SizedBox(width: 6),
-      Expanded(child: Text('Permission: ${st.permission.label}', style: theme.textTheme.bodySmall)),
+    children.add(_TileGrid(tiles: [
+      (Icons.north_rounded, 'Latitude', shown.latitude == null ? '—' : Fmt.latitude(shown.latitude!, settings.coordinateFormat)),
+      (Icons.east_rounded, 'Longitude', shown.longitude == null ? '—' : Fmt.longitude(shown.longitude!, settings.coordinateFormat)),
+      (Icons.terrain_rounded, 'Altitude', shown.altitude == null ? 'Unavailable' : Fmt.altitude(shown.altitude, settings.altitudeUnit)),
+      (Icons.gps_fixed_rounded, 'Accuracy', manual != null ? '—' : Fmt.accuracy(shown.accuracy, settings.distanceUnit)),
     ]));
 
+    // Warnings, only when they matter.
+    String? warning;
+    if (manual != null) {
+      warning = null;
+    } else if (shown.isMocked) {
+      warning = 'This phone reports a simulated (mock) location.';
+    } else if (live == null) {
+      warning = 'Last known position${shown.detectedAt != null ? ' (${Fmt.relative(shown.detectedAt!)})' : ''} — waiting for live GPS.';
+    } else if (st.weakSignal) {
+      warning = 'Low accuracy. Move to an open area for a better fix — you can still take photos.';
+    }
+    if (warning != null) {
+      children.addAll([const SizedBox(height: 12), InfoBanner(message: warning, tone: ChipTone.warning)]);
+    }
+
+    children.add(const SizedBox(height: 6));
+    children.add(Row(
+      children: [
+        if (manual != null)
+          TextButton.icon(
+            onPressed: hx(() => ctrl.setManual(null)),
+            icon: const Icon(Icons.gps_fixed, size: 18),
+            label: const Text('Use GPS'),
+          )
+        else
+          Expanded(
+            child: Text(
+              shown.detectedAt == null ? shown.source.label : '${shown.source.label} · ${Fmt.timeShort(shown.detectedAt!, settings)}',
+              style: theme.textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        if (manual != null) const Spacer(),
+        TextButton.icon(
+          onPressed: hx(() => _pickOnMap(context, ref, shown)),
+          icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+          label: const Text('Change'),
+        ),
+      ],
+    ));
+
     return AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
+  }
+}
+
+class _TileGrid extends StatelessWidget {
+  const _TileGrid({required this.tiles});
+  final List<(IconData, String, String)> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = scheme.brightness == Brightness.dark;
+    return LayoutBuilder(builder: (context, c) {
+      final w = (c.maxWidth - 10) / 2;
+      return Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          for (final (icon, label, value) in tiles)
+            Container(
+              width: w,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: dark ? AppColors.darkCardHigh : const Color(0xFFF4F7FD),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: scheme.secondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label, style: theme.textTheme.labelSmall),
+                        const SizedBox(height: 2),
+                        Text(
+                          value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    });
   }
 }
 
@@ -238,32 +234,24 @@ class _AddressStatusLine extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final ctrl = ref.read(locationControllerProvider.notifier);
-    Widget line(IconData icon, String text, {Widget? action, Color? color}) => Padding(
+    Widget line(IconData icon, String text, {Widget? action}) => Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Row(children: [
-            Icon(icon, size: 15, color: color ?? theme.colorScheme.onSurfaceVariant),
+            Icon(icon, size: 15, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 6),
             Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
             ?action,
           ]),
         );
-    switch (st.addressStatus) {
-      case AddressStatus.loading:
-        return line(Icons.sync, 'Looking up address…');
-      case AddressStatus.offline:
-        return line(Icons.cloud_off, 'Offline – coordinates are saved; the address will be filled in later.');
-      case AddressStatus.noConsent:
-        return line(Icons.public_off, 'Address lookup is off.',
-            action: TextButton(onPressed: () => requestOnlineConsent(context, ref), child: const Text('Enable')));
-      case AddressStatus.failed:
-        return line(Icons.error_outline, st.addressMessage ?? 'Address lookup failed.',
-            color: context.status.error,
-            action: TextButton(onPressed: ctrl.retryAddress, child: const Text('Retry')));
-      case AddressStatus.notFound:
-        return line(Icons.help_outline, 'No address found for this position.');
-      case AddressStatus.resolved:
-      case AddressStatus.idle:
-        return const SizedBox.shrink();
-    }
+    return switch (st.addressStatus) {
+      AddressStatus.loading => line(Icons.sync, 'Looking up address…'),
+      AddressStatus.offline => line(Icons.cloud_off, 'Offline — the address will be added later.'),
+      AddressStatus.noConsent => line(Icons.public_off, 'Address lookup is off.',
+          action: TextButton(onPressed: hx(() => requestOnlineConsent(context, ref)), child: const Text('Turn on'))),
+      AddressStatus.failed => line(Icons.error_outline, 'Couldn\'t get the address.',
+          action: TextButton(onPressed: hx(ctrl.retryAddress), child: const Text('Retry'))),
+      AddressStatus.notFound => line(Icons.help_outline, 'No address found here.'),
+      AddressStatus.resolved || AddressStatus.idle => const SizedBox.shrink(),
+    };
   }
 }

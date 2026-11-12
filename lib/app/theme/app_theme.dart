@@ -6,7 +6,7 @@ import 'typography.dart';
 
 abstract final class AppTheme {
   static const radius = 16.0;
-  static const radiusSmall = 10.0;
+  static const radiusSmall = 14.0;
 
   static ThemeData light() {
     const scheme = ColorScheme(
@@ -95,7 +95,8 @@ abstract final class AppTheme {
         backgroundColor: background,
         foregroundColor: scheme.onSurface,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: text.titleLarge,
       ),
@@ -110,16 +111,17 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 48),
+          minimumSize: const Size(0, 50),
           shape: smallShape,
           textStyle: text.labelLarge,
-          backgroundColor: isDark ? AppColors.royal : AppColors.navy,
+          elevation: 0,
+          backgroundColor: AppColors.royal,
           foregroundColor: Colors.white,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 48),
+          minimumSize: const Size(0, 50),
           shape: smallShape,
           textStyle: text.labelLarge,
           side: BorderSide(color: scheme.outline),
@@ -130,16 +132,20 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? AppColors.darkCardHigh : const Color(0xFFF3F5F9),
+        fillColor: isDark ? AppColors.darkCardHigh : const Color(0xFFF1F4FA),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusSmall),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderSide: BorderSide.none,
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSmall),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusSmall),

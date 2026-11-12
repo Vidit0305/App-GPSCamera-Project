@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../app/providers.dart';
+import '../utils/haptics.dart';
 import '../../features/location/services/location_controller.dart';
 import '../../features/location/services/location_service.dart';
 
@@ -21,8 +22,8 @@ Future<bool> showPermissionRationale(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(allowLabel)),
+        TextButton(onPressed: hx(() => Navigator.pop(ctx, false)), child: const Text('Not now')),
+        FilledButton(onPressed: hx(() => Navigator.pop(ctx, true)), child: Text(allowLabel)),
       ],
     ),
   );
@@ -36,8 +37,8 @@ Future<void> showOpenSettingsDialog(BuildContext context, {required String title
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Open settings')),
+        TextButton(onPressed: hx(() => Navigator.pop(ctx, false)), child: const Text('Cancel')),
+        FilledButton(onPressed: hx(() => Navigator.pop(ctx, true)), child: const Text('Open settings')),
       ],
     ),
   );
@@ -142,8 +143,8 @@ Future<bool> requestOnlineConsent(BuildContext context, WidgetRef ref) async {
         'still work fully offline. You can change this any time in Settings › Privacy.',
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Stay offline')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Allow')),
+        TextButton(onPressed: hx(() => Navigator.pop(ctx, false)), child: const Text('Stay offline')),
+        FilledButton(onPressed: hx(() => Navigator.pop(ctx, true)), child: const Text('Allow')),
       ],
     ),
   );

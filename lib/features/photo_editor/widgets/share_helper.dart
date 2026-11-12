@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../data/models/photo_model.dart';
 import '../../../shared/widgets/common.dart';
 import '../../photo_editor/services/photo_service.dart';
@@ -26,9 +27,9 @@ Future<void> sharePhotosWithPrivacy(BuildContext context, WidgetRef ref, List<Ph
           'Note: a visible stamp drawn on the photo is part of the image and is not removed.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Include location')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove location')),
+          TextButton(onPressed: hx(() => Navigator.pop(ctx)), child: const Text('Cancel')),
+          OutlinedButton(onPressed: hx(() => Navigator.pop(ctx, false)), child: const Text('Include location')),
+          FilledButton(onPressed: hx(() => Navigator.pop(ctx, true)), child: const Text('Remove location')),
         ],
       ),
     );

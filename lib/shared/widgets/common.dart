@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/utils/haptics.dart';
 
 /// Rounded card with consistent padding.
 class AppCard extends StatelessWidget {
@@ -16,10 +17,27 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: color,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+    final scheme = Theme.of(context).colorScheme;
+    final dark = scheme.brightness == Brightness.dark;
+    final radius = BorderRadius.circular(20);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color ?? scheme.surface,
+        borderRadius: radius,
+        border: dark ? Border.all(color: scheme.outlineVariant) : null,
+        boxShadow: dark
+            ? null
+            : [
+                BoxShadow(color: const Color(0xFF0B1B3F).withValues(alpha: 0.06), blurRadius: 24, offset: const Offset(0, 8)),
+                BoxShadow(color: const Color(0xFF0B1B3F).withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 1)),
+              ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: hx(onTap), child: Padding(padding: padding, child: child)),
+      ),
     );
   }
 }
@@ -137,7 +155,7 @@ class ErrorView extends StatelessWidget {
       message: message,
       action: onRetry == null
           ? null
-          : OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+          : OutlinedButton.icon(onPressed: hx(onRetry), icon: const Icon(Icons.refresh), label: const Text('Retry')),
     );
   }
 }
@@ -253,10 +271,13 @@ Future<bool> confirm(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        TextButton(onPressed: hx(() => Navigator.pop(ctx, false)), child: const Text('Cancel')),
         FilledButton(
           style: destructive ? FilledButton.styleFrom(backgroundColor: AppColors.error) : null,
-          onPressed: () => Navigator.pop(ctx, true),
+          onPressed: () {
+            destructive ? Haptics.heavy() : Haptics.tap();
+            Navigator.pop(ctx, true);
+          },
           child: Text(confirmLabel),
         ),
       ],

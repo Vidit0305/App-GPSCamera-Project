@@ -25,12 +25,12 @@ The app is deliberately simple: **one home screen** (Capture, current location, 
 | Camera | Live preview, flash off/auto/on, front/rear switch, pinch & preset zoom, tap to focus/expose, exposure slider, resolution selection, live stamp preview, GPS status, ticking date/time, correct lifecycle handling (camera released when backgrounded). |
 | GPS | Foreground-only Geolocator stream: latitude, longitude, altitude (MSL on Android), accuracy, speed, heading, fix time, mock-location detection. Weak-signal warning; accuracy keeps improving while open. Last-known position is shown only with its age and never presented as a live fix. |
 | Reverse geocoding | Provider abstraction (`GeocodingProvider`) with two implementations: the OS geocoder and Nominatim (OSM or any compatible service). Results are cached locally (~11 m grid) for offline reuse. Photos captured offline keep their coordinates and get their address resolved later — without touching user-edited stamp text. |
-| Visible stamp | Renderer that draws at the photo's **real export resolution** (not a screenshot). The same code paints the live preview, so preview = export. Fields, fonts (4 bundled families), size, bold/italic, alignment, colours, opacity, border, radius, padding, line spacing, shadow, icons, banner mode, 5 anchor positions plus drag-anywhere, optional map snapshot (size, corners, placement, marker, zoom). |
-| Templates | 8 built-in designs, selectable in the camera and the editor; any edited style can be saved as a template. Stored in SQLite. |
-| EXIF editor | Reads and writes real metadata: DateTimeOriginal / Digitized / DateTime, OffsetTime, GPS lat/lon + refs, altitude + ref, GPS date/time, description, artist, copyright, user comment. Every write is **verified by re-opening the saved file**; any field that doesn't match is reported as failed. Unsupported formats are reported, never faked. |
-| Independent values | Each photo keeps three separate sets: detected GPS data, visible-stamp text, and EXIF overrides. Sync is explicit (Copy to/from EXIF, Reset to detected). |
+| Visible stamp | Rendered into the photo at its **real resolution** (not a screenshot); the editor preview uses the same code, so preview = result. Drag the stamp to move it. Designs come from 8 built-in templates (chosen in the camera). |
+| Photo metadata | Capture time and GPS are written into the real EXIF data of each photo and **verified by re-reading the file**. Changing a photo's location in the editor updates both the stamp and the GPS metadata. (A full EXIF editor exists in the native/service layer; its screen was removed to keep the app simple.) |
+| Editor | One simple screen: preview, "Show stamp" switch, *Change location*, *Reset*, the text fields shown on the photo (tap the eye to hide one) and a collapsible *More details* list. Save / Save as new / Share / Save to phone gallery / Delete. |
 | Manual location | Map screen (flutter_map + OSM tiles) with search, centre-pin selection, my-location, zoom, reverse geocoding, and manual fields. Manual locations are always labelled as such and never alter the device GPS. |
-| Home | Single screen: Capture card, live location card (with *Change* to pick on a map), grid of your photos (tap to edit, share, save to the phone gallery or delete), light/dark theme toggle at top right. |
+| Home | Single screen: Capture card, live location card (with *Change* to pick on a map), a red **Clear all photos** button (asks "Are you sure?" first), a grid of your photos (tap to edit), and a light/dark toggle at top right. |
+| Vibration | Every button, switch and tap target gives haptic feedback (stronger for the shutter and for destructive actions). Uses the phone's haptic engine, so it follows the system "touch feedback" setting. |
 | Privacy | Online services (geocoding, search, tiles, weather) require explicit consent, asked on first launch. Photos are never uploaded. No background location. |
 | Offline | Capture, GPS, stamping, EXIF editing, viewing and sharing photos all work without internet. |
 
@@ -153,7 +153,7 @@ lib/
   features/
     home/          the single main screen
     camera/        full-screen camera
-    photo_editor/  stamp text, stamp style and EXIF tabs; capture/save pipeline
+    photo_editor/  simple editor (preview + stamp text); capture/save pipeline
     location/ stamp_editor/ exif_editor/ map_location/ templates/(built-in designs)
   shared/widgets/              cards, chips, banners, thumbnails, colour picker
 ```
@@ -204,7 +204,7 @@ Bundled fonts: Inter, Lora, Oswald (SIL OFL 1.1), Roboto Mono (Apache 2.0). Map 
 
 ## App icon
 
-The icon is drawn in code by [tool/icon/generate_icon_test.dart](tool/icon/generate_icon_test.dart) (camera with a location pin in its lens, using the app's navy/royal palette). To change it, edit that file and run:
+The icon is drawn in code by [tool/icon/generate_icon_test.dart](tool/icon/generate_icon_test.dart) (a white map pin whose head is a camera lens with aperture blades, on a deep-blue gradient with map contour rings). To change it, edit that file and run:
 
 ```bash
 flutter test tool/icon/generate_icon_test.dart   # writes assets/icon/*.png

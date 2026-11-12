@@ -11,6 +11,7 @@ import '../../../core/config/env.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/permissions/permission_flows.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/location_model.dart';
 import '../../../data/remote/geocoding_provider.dart';
@@ -399,7 +400,10 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                 maxZoom: 19,
                 backgroundColor: scheme.surfaceContainerHigh,
                 interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
-                onTap: (_, p) => _moveTo(p, zoom: _map.camera.zoom),
+                onTap: (_, p) {
+                  Haptics.select();
+                  _moveTo(p, zoom: _map.camera.zoom);
+                },
                 onPositionChanged: _onPositionChanged,
               ),
               children: [
@@ -469,6 +473,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                               ? IconButton(
                                   icon: const Icon(Icons.close),
                                   onPressed: () {
+                                    Haptics.tap();
                                     _search.clear();
                                     _searchFocus.unfocus();
                                     setState(() {
@@ -502,6 +507,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                           const SizedBox(height: 8),
                           FilledButton.icon(
                             onPressed: () async {
+                              Haptics.tap();
                               final ok = await requestOnlineConsent(context, ref);
                               if (ok && _selected) _scheduleGeocode(immediate: true);
                             },
@@ -580,7 +586,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                   leading: const Icon(Icons.history),
                   title: Text(l.shortAddress.isNotEmpty ? l.shortAddress : 'Unnamed location'),
                   subtitle: Text(Fmt.latLng(l.latitude!, l.longitude!, _settings.coordinateFormat)),
-                  onTap: () => _pickRecent(l),
+                  onTap: hx(() => _pickRecent(l)),
                 ),
             ],
           );
@@ -602,7 +608,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
               leading: const Icon(Icons.place_outlined),
               title: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: r.subtitle == null ? null : Text(r.subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis),
-              onTap: () => _pickResult(r),
+              onTap: hx(() => _pickResult(r)),
             ),
         ],
       );
@@ -675,12 +681,12 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
           children: [
             Flexible(child: StatusChip(label: statusText, tone: tone)),
             if (_status == _AddrStatus.failed || _status == _AddrStatus.offline)
-              TextButton(onPressed: () => _scheduleGeocode(immediate: true), child: const Text('Retry')),
+              TextButton(onPressed: hx(() => _scheduleGeocode(immediate: true)), child: const Text('Retry')),
           ],
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: _selected ? _confirm : null,
+          onPressed: _selected ? hx(_confirm) : null,
           icon: const Icon(Icons.check),
           label: const Text('Confirm Location'),
         ),
@@ -717,7 +723,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                   IconButton(
                     tooltip: 'Go to coordinates',
                     icon: const Icon(Icons.arrow_forward),
-                    onPressed: _onCoordEdited,
+                    onPressed: hx(_onCoordEdited),
                   ),
                 ],
               ),
@@ -764,7 +770,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: _resetEdits,
+                    onPressed: hx(_resetEdits),
                     icon: const Icon(Icons.restart_alt),
                     label: const Text('Reset to looked-up address'),
                   ),
@@ -790,7 +796,7 @@ class _MapButton extends StatelessWidget {
       color: scheme.surface,
       elevation: 3,
       shape: const CircleBorder(),
-      child: IconButton(tooltip: tooltip, icon: Icon(icon), color: scheme.onSurface, onPressed: onPressed),
+      child: IconButton(tooltip: tooltip, icon: Icon(icon), color: scheme.onSurface, onPressed: hx(onPressed)),
     );
   }
 }

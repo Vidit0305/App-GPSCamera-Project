@@ -45,22 +45,20 @@ Run on at least one recent Android phone and one iPhone, with a release build (`
 - [ ] Each anchor position, plus dragging to a custom position.
 - [ ] Export at maximum resolution: zoom into the saved file; text is sharp, not upscaled.
 - [ ] Map snapshot online; then offline in a cached area (map shown) and an uncached area (photo saved without a map, with a message).
-- [ ] Choosing a template in the camera and in the editor works; "Save style as template" makes it selectable after an app restart.
+- [ ] Choosing a template in the camera works; the editor shows only the stamp text fields (no style or EXIF tabs).
 
 ### EXIF
 For each check, verify independently: copy the file to a computer (*Share* or *Save to phone gallery*) and run `exiftool -a -G1 -s file.jpg`.
 - [ ] New capture: DateTimeOriginal, OffsetTimeOriginal, GPSLatitude/Ref, GPSLongitude/Ref, GPSAltitude/Ref, GPSDateStamp/TimeStamp are present and correct; Make/Model are preserved.
-- [ ] Edit coordinates (including southern and western hemispheres) and save: the editor shows "Verified" and exiftool matches.
-- [ ] Edit altitude above and below sea level (Ref 0/1).
-- [ ] Edit the date taken, with "Also change DateTimeDigitized" off: Digitized keeps the original value.
-- [ ] Artist, Copyright, Description, UserComment are written. Non-ASCII text in ASCII fields is rejected with a message.
-- [ ] *Remove all GPS metadata*: exiftool shows no GPS tags.
+- [ ] Editor › *Change location* (try southern and western hemispheres) › Save: exiftool shows the new GPSLatitude/Ref and GPSLongitude/Ref, and the stamp text matches.
 - [ ] Unrelated tags are preserved (compare `exiftool` output before and after; MakerNote may be dropped in stamped exports).
 - [ ] Orientation: portrait captures stay upright in the app, in the device gallery and on a computer (stamped exports have Orientation = 1).
 - [ ] Share with *Remove location* on: the shared file has no GPS tags.
 - [ ] The preserved original (`Documents/photos/originals`) is byte-identical before and after edits.
 
 ### Home
+- [ ] *Clear all photos* asks "Are you sure?"; Cancel keeps everything, OK deletes every photo and the grid shows "No photos yet". Copies in the phone gallery remain.
+- [ ] Every button, switch, chip and photo tile vibrates when pressed (with system touch feedback on); the shutter and destructive actions vibrate more strongly.
 - [ ] Only the home screen is shown; there is no bottom bar.
 - [ ] The top-right button switches light and dark theme, and the choice survives an app restart.
 - [ ] The photo grid shows new captures immediately and scrolls smoothly with 200+ photos; tapping a photo opens the editor.

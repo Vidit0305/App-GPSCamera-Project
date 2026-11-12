@@ -2,31 +2,32 @@ import 'package:flutter/material.dart';
 
 /// Brand palette for GPS Camera ("Modern Professional").
 abstract final class AppColors {
-  // Brand
-  static const navy = Color(0xFF0B1F3A); // Primary - deep navy blue
-  static const navyLight = Color(0xFF1B3358);
-  static const royal = Color(0xFF2F5BEA); // Secondary - royal blue
-  static const royalLight = Color(0xFF6F8FF5);
+  // Brand (matches the app icon)
+  static const navy = Color(0xFF0B1B3F); // Primary - deep navy blue
+  static const navyLight = Color(0xFF14307A);
+  static const royal = Color(0xFF2B63F0); // Secondary - royal blue
+  static const royalLight = Color(0xFF7FA2FF);
+  static const cyan = Color(0xFF5EEAD4); // small highlights only
 
   // Light surfaces
-  static const background = Color(0xFFF5F7FA); // very light grey
+  static const background = Color(0xFFF4F6FB); // very light grey
   static const card = Color(0xFFFFFFFF);
-  static const textPrimary = Color(0xFF1D2330); // dark charcoal
+  static const textPrimary = Color(0xFF111827); // dark charcoal
   static const textSecondary = Color(0xFF6B7280); // grey
-  static const divider = Color(0xFFE5E8EE);
+  static const divider = Color(0xFFE8ECF3);
 
   // Dark surfaces
-  static const darkBackground = Color(0xFF0A0F1A);
-  static const darkCard = Color(0xFF141B2A);
-  static const darkCardHigh = Color(0xFF1C2538);
-  static const darkTextPrimary = Color(0xFFE8ECF4);
-  static const darkTextSecondary = Color(0xFF9AA3B5);
-  static const darkDivider = Color(0xFF263049);
+  static const darkBackground = Color(0xFF070D1C);
+  static const darkCard = Color(0xFF0F172A);
+  static const darkCardHigh = Color(0xFF16213A);
+  static const darkTextPrimary = Color(0xFFE6EBF5);
+  static const darkTextSecondary = Color(0xFF94A3B8);
+  static const darkDivider = Color(0xFF1E293B);
 
   // Status
-  static const success = Color(0xFF1E9E5A);
+  static const success = Color(0xFF16A34A);
   static const warning = Color(0xFFE8890C);
-  static const error = Color(0xFFD93A3A);
+  static const error = Color(0xFFE5484D);
 }
 
 /// Semantic status colours that adapt to brightness, exposed as a ThemeExtension.

@@ -11,6 +11,7 @@ import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/permissions/permission_flows.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/location_model.dart';
 import '../../../data/models/stamp_template_model.dart';
@@ -248,7 +249,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
                 leading: Icon(t.id == current?.id ? Icons.radio_button_checked : Icons.radio_button_off),
                 title: Text(t.name),
                 subtitle: Text(t.description, maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () => Navigator.pop(ctx, t),
+                onTap: hx(() => Navigator.pop(ctx, t)),
               ),
           ],
         ),
@@ -276,7 +277,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
               ListTile(
                 leading: Icon(r == s.resolution ? Icons.radio_button_checked : Icons.radio_button_off),
                 title: Text(r.label),
-                onTap: () => Navigator.pop(ctx, r),
+                onTap: hx(() => Navigator.pop(ctx, r)),
               ),
           ],
         ),
@@ -303,7 +304,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
     final template = _template ??
         ref.read(defaultTemplateProvider) ??
         await ref.read(templateRepositoryProvider).getById(ref.read(settingsProvider).defaultTemplateId);
-    HapticFeedback.mediumImpact();
+    Haptics.heavy();
     final capturedAt = DateTime.now();
     final location = ref.read(locationControllerProvider.notifier).forCapture();
     final weather = _freshWeather(location);
@@ -535,7 +536,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: GestureDetector(
-                onTap: () => _setZoom(z),
+                onTap: hx(() => _setZoom(z)),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -660,16 +661,16 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
         children: [
-          IconButton(onPressed: onClose, icon: const Icon(Icons.close, color: Colors.white), tooltip: 'Close'),
+          IconButton(onPressed: hx(onClose), icon: const Icon(Icons.close, color: Colors.white), tooltip: 'Close'),
           const Spacer(),
-          IconButton(onPressed: onFlash, icon: Icon(flashIcon, color: Colors.white), tooltip: flashLabel),
+          IconButton(onPressed: hx(onFlash), icon: Icon(flashIcon, color: Colors.white), tooltip: flashLabel),
           IconButton(
-            onPressed: onExposure,
+            onPressed: hx(onExposure),
             icon: Icon(Icons.exposure, color: onExposure == null ? Colors.white30 : Colors.white),
             tooltip: 'Exposure',
           ),
-          IconButton(onPressed: onResolution, icon: const Icon(Icons.high_quality_outlined, color: Colors.white), tooltip: 'Resolution'),
-          IconButton(onPressed: onTemplate, icon: const Icon(Icons.layers_outlined, color: Colors.white), tooltip: 'Stamp template'),
+          IconButton(onPressed: hx(onResolution), icon: const Icon(Icons.high_quality_outlined, color: Colors.white), tooltip: 'Resolution'),
+          IconButton(onPressed: hx(onTemplate), icon: const Icon(Icons.layers_outlined, color: Colors.white), tooltip: 'Stamp template'),
         ],
       ),
     );
@@ -692,7 +693,7 @@ class _BottomBar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: last == null ? null : () => context.push(Routes.editor(last.id)),
+            onTap: last == null ? null : hx(() => context.push(Routes.editor(last.id))),
             child: Container(
               width: 52,
               height: 52,
@@ -724,7 +725,7 @@ class _BottomBar extends ConsumerWidget {
           ),
           IconButton.filled(
             style: IconButton.styleFrom(backgroundColor: Colors.white12, fixedSize: const Size(52, 52)),
-            onPressed: onSwitch,
+            onPressed: hx(onSwitch),
             icon: const Icon(Icons.cameraswitch_outlined, color: Colors.white),
             tooltip: 'Switch camera',
           ),
@@ -756,10 +757,10 @@ class _Message extends StatelessWidget {
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 20),
-            FilledButton(onPressed: primary.$2, child: Text(primary.$1)),
+            FilledButton(onPressed: hx(primary.$2), child: Text(primary.$1)),
             if (secondary != null)
               TextButton(
-                onPressed: secondary!.$2,
+                onPressed: hx(secondary!.$2),
                 child: Text(secondary!.$1, style: const TextStyle(color: Colors.white70)),
               ),
           ],

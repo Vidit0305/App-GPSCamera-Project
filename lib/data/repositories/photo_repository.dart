@@ -68,6 +68,20 @@ class PhotoRepository {
     _changes.add(null);
   }
 
+  /// Deletes every photo record and all files in the app's photo folders.
+  /// Returns the number of records removed.
+  Future<int> deleteAll() async {
+    final n = await _db.db.delete('photos');
+    for (final dir in [_storage.originalsDir, _storage.editedDir, _storage.thumbnailsDir]) {
+      try {
+        if (await dir.exists()) await dir.delete(recursive: true);
+        await dir.create(recursive: true);
+      } catch (_) {}
+    }
+    _changes.add(null);
+    return n;
+  }
+
   Future<int> count() async =>
       Sqflite.firstIntValue(await _db.db.rawQuery('SELECT COUNT(*) FROM photos')) ?? 0;
 }
