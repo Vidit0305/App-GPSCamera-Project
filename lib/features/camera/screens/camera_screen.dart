@@ -692,7 +692,7 @@ class _BottomBar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: last == null ? null : () => context.push(Routes.photo(last.id)),
+            onTap: last == null ? null : () => context.push(Routes.editor(last.id)),
             child: Container(
               width: 52,
               height: 52,

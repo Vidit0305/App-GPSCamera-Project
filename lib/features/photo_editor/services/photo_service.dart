@@ -268,60 +268,6 @@ class PhotoService {
     return PhotoOpResult(record, warnings: warnings);
   }
 
-  // ----------------------------------------------------------------- import
-
-  /// Imports an existing image file (copied, never moved) for viewing/editing.
-  Future<PhotoModel> importFile(String sourcePath, {String? originalName}) async {
-    final s = _settings;
-    final id = _uuid.v4();
-    final originalPath = _storage.originalPath(id, _ext(originalName ?? sourcePath));
-    await File(sourcePath).copy(originalPath);
-    final exif = await _tryRead(originalPath);
-    final dims = await ImageRenderService.imageSize(originalPath);
-    final captured = exif?.dateTimeOriginal ?? exif?.dateTime ?? (await File(originalPath).lastModified());
-
-    LocationModel? location;
-    if (exif != null && exif.hasGps) {
-      location = LocationModel(
-        latitude: exif.latitude,
-        longitude: exif.longitude,
-        altitude: exif.altitude,
-        detectedAt: captured,
-        source: LocationSource.exif,
-      );
-      final cached = await ref.read(geocodingRepositoryProvider).cached(exif.latitude!, exif.longitude!);
-      if (cached != null) location = location.withAddress(cached);
-    }
-    final thumb = _storage.thumbnailPath(id);
-    await _thumb(originalPath, thumb);
-    final record = PhotoModel(
-      id: id,
-      originalFilePath: originalPath,
-      thumbnailPath: thumb,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      capturedAt: captured,
-      source: PhotoSource.imported,
-      detectedLocation: location,
-      stampValues: StampValueFactory.build(location: location, weather: null, time: captured, settings: s),
-      stampStyle: ref.read(defaultTemplateProvider),
-      stampTemplateId: s.defaultTemplateId,
-      originalExif: exif,
-      exifStatus: exif == null
-          ? ExifStatus.unsupported
-          : (exif.writeSupported ? ExifStatus.untouched : ExifStatus.unsupported),
-      exifStatusMessage: exif == null ? 'Metadata could not be read from this file.' : null,
-      imageWidth: dims.width.round(),
-      imageHeight: dims.height.round(),
-      fileSize: await File(originalPath).length(),
-      addressPending: location != null && !location.addressResolved,
-      originalFileName: originalName ?? p.basename(sourcePath),
-    );
-    final out = _denormalise(record, exif);
-    await ref.read(photoRepositoryProvider).upsert(out);
-    return out;
-  }
-
   // ----------------------------------------------------------------- edit
 
   /// Regenerates the edited file from the preserved original according to
@@ -458,34 +404,6 @@ class PhotoService {
       ref.read(photoRepositoryProvider).upsert(photo.copyWith(updatedAt: DateTime.now()));
 
   // ----------------------------------------------------------------- copy / delete
-
-  Future<PhotoModel> duplicate(PhotoModel photo) async {
-    final id = _uuid.v4();
-    final orig = _storage.originalPath(id, _ext(photo.originalFilePath));
-    await File(photo.originalFilePath).copy(orig);
-    String? edited;
-    if (photo.editedFilePath != null && photo.editedFilePath != photo.originalFilePath) {
-      edited = _storage.editedPath(id);
-      await File(photo.editedFilePath!).copy(edited);
-    } else if (photo.editedFilePath != null) {
-      edited = orig;
-    }
-    final thumb = _storage.thumbnailPath(id);
-    await _thumb(edited ?? orig, thumb);
-    final now = DateTime.now();
-    final copy = PhotoModel.fromRow({
-      ...photo.toRow(),
-      'id': id,
-      'original_file_path': orig,
-      'edited_file_path': edited,
-      'thumbnail_path': thumb,
-      'created_at': now.millisecondsSinceEpoch,
-      'updated_at': now.millisecondsSinceEpoch,
-      'source': PhotoSource.copy.name,
-    });
-    await ref.read(photoRepositoryProvider).upsert(copy);
-    return copy;
-  }
 
   Future<void> delete(PhotoModel photo) => ref.read(photoRepositoryProvider).delete(photo);
 

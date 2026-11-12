@@ -30,7 +30,7 @@ Run on at least one recent Android phone and one iPhone, with a release build (`
 
 ### GPS
 - [ ] Outdoors: accuracy is about ±3–10 m; lat/lon match a reference app within accuracy.
-- [ ] Altitude appears in metres and in feet (switch in Settings). On a device without altitude it shows "Altitude unavailable".
+- [ ] Altitude appears in metres. On a device without altitude it shows "Altitude unavailable".
 - [ ] Indoors / weak signal: the "Weak GPS signal" warning shows and capture still works.
 - [ ] Location permission denied: Home shows the warning with *Allow location* / *Select on map*; captures have no GPS, with a notice in the editor.
 - [ ] Location services off: the "Location off" state shows and *Turn on* opens system settings.
@@ -45,10 +45,10 @@ Run on at least one recent Android phone and one iPhone, with a release build (`
 - [ ] Each anchor position, plus dragging to a custom position.
 - [ ] Export at maximum resolution: zoom into the saved file; text is sharp, not upscaled.
 - [ ] Map snapshot online; then offline in a cached area (map shown) and an uncached area (photo saved without a map, with a message).
-- [ ] Templates: create, edit, duplicate, delete and set default persist after an app restart; the camera opens with the default.
+- [ ] Choosing a template in the camera and in the editor works; "Save style as template" makes it selectable after an app restart.
 
 ### EXIF
-For each check, verify independently: copy the file to a computer (*Share* or *Export to gallery*) and run `exiftool -a -G1 -s file.jpg`.
+For each check, verify independently: copy the file to a computer (*Share* or *Save to phone gallery*) and run `exiftool -a -G1 -s file.jpg`.
 - [ ] New capture: DateTimeOriginal, OffsetTimeOriginal, GPSLatitude/Ref, GPSLongitude/Ref, GPSAltitude/Ref, GPSDateStamp/TimeStamp are present and correct; Make/Model are preserved.
 - [ ] Edit coordinates (including southern and western hemispheres) and save: the editor shows "Verified" and exiftool matches.
 - [ ] Edit altitude above and below sea level (Ref 0/1).
@@ -57,24 +57,21 @@ For each check, verify independently: copy the file to a computer (*Share* or *E
 - [ ] *Remove all GPS metadata*: exiftool shows no GPS tags.
 - [ ] Unrelated tags are preserved (compare `exiftool` output before and after; MakerNote may be dropped in stamped exports).
 - [ ] Orientation: portrait captures stay upright in the app, in the device gallery and on a computer (stamped exports have Orientation = 1).
-- [ ] Import a PNG and a WebP on Android (writable), and a HEIC (Android: reported "not supported"; iOS: verified or reported).
 - [ ] Share with *Remove location* on: the shared file has no GPS tags.
-- [ ] The preserved original (Photo details › Original) is byte-identical before and after edits.
+- [ ] The preserved original (`Documents/photos/originals`) is byte-identical before and after edits.
 
-### Gallery & batch
-- [ ] Grid scrolls smoothly with 200+ photos; date headers, search, sort and each category filter work.
-- [ ] Details, Edit, Share, Export to gallery (original and edited), Save a copy, Delete.
-- [ ] Batch: select 20+ photos, change lat/lon + date + author with "Save as new". Progress shows, each copy verifies, and the originals are unchanged.
-- [ ] Batch overwrite mode updates the edited files in place; preserved originals stay untouched.
-- [ ] Batch with a failing item (e.g. an imported HEIC on Android): the other items still succeed and the failure is listed.
+### Home
+- [ ] Only the home screen is shown; there is no bottom bar.
+- [ ] The top-right button switches light and dark theme, and the choice survives an app restart.
+- [ ] The photo grid shows new captures immediately and scrolls smoothly with 200+ photos; tapping a photo opens the editor.
+- [ ] Editor menu: Save to phone gallery, Delete, Share work.
 
 ### Offline (airplane mode, Wi-Fi off)
 - [ ] App opens; camera captures; GPS coordinates are recorded.
 - [ ] Stamps apply with saved templates; EXIF edits save and verify.
-- [ ] Gallery opens; batch editing and sharing to a local app work.
+- [ ] The photo grid opens; sharing to a local app works.
 - [ ] Map screen shows the offline notice; manual coordinate entry still confirms.
 
 ### Permissions & privacy
 - [ ] First launch: location rationale, then the system prompt, then online-services consent. With consent declined, no network requests are made (check with a proxy, e.g. mitmproxy).
-- [ ] *Clear cached location data* empties the address cache, recent locations and map tiles.
 - [ ] No background-location permission is requested on either platform.

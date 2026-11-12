@@ -1,6 +1,6 @@
 # API integrations
 
-GPS Camera works offline by default. Every network integration below is optional, needs the user's **online-services consent** (asked on first launch, changeable in *Settings › Privacy*), and is configured at build time through `env.json` (see [env.example.json](../env.example.json)). No photo is ever uploaded.
+GPS Camera works offline by default. Every network integration below is optional, needs the user's **online-services consent** (asked on first launch; stored as `AppSettings.onlineConsent`), and is configured at build time through `env.json` (see [env.example.json](../env.example.json)). No photo is ever uploaded.
 
 | Integration | Sends | Used for | Code |
 |---|---|---|---|
@@ -21,7 +21,7 @@ abstract interface class GeocodingProvider {
 }
 ```
 
-`GeocodingRepository` selects the provider from *Settings › Location › Reverse geocoding provider*, adds a local SQLite cache keyed on coordinates rounded to 4 decimals (about 11 m), enforces consent and offline checks, and falls back from the device geocoder to Nominatim if the device has none.
+`GeocodingRepository` selects the provider from `AppSettings.geocoderProvider` (default: device geocoder), adds a local SQLite cache keyed on coordinates rounded to 4 decimals (about 11 m), enforces consent and offline checks, and falls back from the device geocoder to Nominatim if the device has none.
 
 ### Adding a provider
 
@@ -49,13 +49,10 @@ abstract interface class GeocodingProvider {
 
 - `GET {WEATHER_BASE_URL}?latitude=…&longitude=…&current=temperature_2m,weather_code`
 - Results are cached in memory for 20 minutes per ~2 km area.
-- Weather is fetched only when *Settings › Location › Fetch weather* is on, consent is given, and the device is online.
+- Weather is fetched only when `AppSettings.fetchWeather` is on (default), consent is given, and the device is online.
 - Weather codes are mapped to text using the WMO interpretation table.
 - Weather is never attached to manually selected locations.
 
 ## Device photo library
 
-`gal` saves exports to an album named "GPS Camera". The `exportToDevice` method in `PhotoService` handles add-only permission requests and reports permission or storage errors. These settings control what is saved automatically after a capture:
-
-- *Settings › Camera › Save edited photographs*
-- *Settings › Camera › Save original photographs*
+`gal` saves exports to an album named "GPS Camera". The `exportToDevice` method in `PhotoService` handles add-only permission requests and reports permission or storage errors. After a capture is saved, the stamped photo is copied there automatically (`AppSettings.saveEditedToDevice`, default on; `saveOriginalToDevice`, default off). Any photo can also be saved from the editor menu with *Save to phone gallery*.

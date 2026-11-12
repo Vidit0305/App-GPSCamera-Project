@@ -1,6 +1,8 @@
 # GPS Camera
 
-A Flutter app (Android & iOS) for taking photos stamped with location, coordinates, altitude and time, with **real EXIF metadata editing**, manual map-based location selection, reusable stamp templates, a gallery, and batch metadata editing. Core features work fully offline.
+A Flutter app (Android & iOS) for taking photos stamped with location, coordinates, altitude and time, with **real EXIF metadata editing** and manual map-based location selection. Core features work fully offline.
+
+The app is deliberately simple: **one home screen** (Capture, current location, your photos, light/dark toggle). The camera, the photo editor and the map picker open on top of it. A larger version with separate Gallery, Templates, Settings and Batch-edit screens exists in the first commit of this repository's history.
 
 - [Features](#features)
 - [Requirements](#requirements)
@@ -24,14 +26,15 @@ A Flutter app (Android & iOS) for taking photos stamped with location, coordinat
 | GPS | Foreground-only Geolocator stream: latitude, longitude, altitude (MSL on Android), accuracy, speed, heading, fix time, mock-location detection. Weak-signal warning; accuracy keeps improving while open. Last-known position is shown only with its age and never presented as a live fix. |
 | Reverse geocoding | Provider abstraction (`GeocodingProvider`) with two implementations: the OS geocoder and Nominatim (OSM or any compatible service). Results are cached locally (~11 m grid) for offline reuse. Photos captured offline keep their coordinates and get their address resolved later — without touching user-edited stamp text. |
 | Visible stamp | Renderer that draws at the photo's **real export resolution** (not a screenshot). The same code paints the live preview, so preview = export. Fields, fonts (4 bundled families), size, bold/italic, alignment, colours, opacity, border, radius, padding, line spacing, shadow, icons, banner mode, 5 anchor positions plus drag-anywhere, optional map snapshot (size, corners, placement, marker, zoom). |
-| Templates | 8 built-in designs plus user templates: create, edit, duplicate, delete, set default. Stored in SQLite. |
+| Templates | 8 built-in designs, selectable in the camera and the editor; any edited style can be saved as a template. Stored in SQLite. |
 | EXIF editor | Reads and writes real metadata: DateTimeOriginal / Digitized / DateTime, OffsetTime, GPS lat/lon + refs, altitude + ref, GPS date/time, description, artist, copyright, user comment. Every write is **verified by re-opening the saved file**; any field that doesn't match is reported as failed. Unsupported formats are reported, never faked. |
 | Independent values | Each photo keeps three separate sets: detected GPS data, visible-stamp text, and EXIF overrides. Sync is explicit (Copy to/from EXIF, Reset to detected). |
 | Manual location | Map screen (flutter_map + OSM tiles) with search, centre-pin selection, my-location, zoom, reverse geocoding, and manual fields. Manual locations are always labelled as such and never alter the device GPS. |
-| Gallery | Date-grouped grid with thumbnails, search, sorting, categories (All / Originals / Edited / GPS tagged / Without GPS / Recently edited), details view, share, delete, save a copy, export to the device gallery, import from the device. |
-| Batch editing | Multi-select → choose fields → preview → process sequentially (memory-safe) with progress and per-photo results. "Save as new" is the default; overwriting only replaces edited files, never the preserved originals. |
-| Privacy | Online services (geocoding, search, tiles, weather) require explicit consent. Photos are never uploaded. Optional GPS stripping when sharing. No background location. |
-| Offline | Capture, GPS, stamping, templates, EXIF editing, gallery, batch and sharing all work without internet. |
+| Home | Single screen: Capture card, live location card (with *Change* to pick on a map), grid of your photos (tap to edit, share, save to the phone gallery or delete), light/dark theme toggle at top right. |
+| Privacy | Online services (geocoding, search, tiles, weather) require explicit consent, asked on first launch. Photos are never uploaded. No background location. |
+| Offline | Capture, GPS, stamping, EXIF editing, viewing and sharing photos all work without internet. |
+
+Preferences (units, date format, default template, image quality, …) use sensible defaults; they live in `AppSettings` and can be changed in code.
 
 ## Requirements
 
@@ -66,8 +69,6 @@ No API keys are stored in the source. All external services are configured at bu
 | `TILE_URL_TEMPLATE` | Raster tiles for the map and map snapshots | OSM standard tiles |
 | `TILE_ATTRIBUTION` | Attribution drawn on maps and snapshots | `© OpenStreetMap contributors` |
 | `WEATHER_BASE_URL` | Open-Meteo compatible endpoint | public Open-Meteo |
-| `SUPPORT_EMAIL`, `SUPPORT_URL` | Settings › About › Contact | empty (shows "not configured") |
-| `PRIVACY_POLICY_URL`, `TERMS_URL` | External legal pages (otherwise the bundled ones in `assets/legal/` are shown) | empty |
 
 > **Production note:** the public OSM tile server and Nominatim are volunteer-run, with strict usage policies (no heavy use, valid User-Agent, max 1 request/s for Nominatim, which the app enforces). For a published app, use your own instance or a commercial provider and point the keys above to it.
 
@@ -136,7 +137,7 @@ Upload `build/ios/ipa/*.ipa` with Xcode Organizer or Transporter. Usage descript
 ```
 lib/
   main.dart                    bootstraps DB, storage, prefs → ProviderScope
-  app/                         app widget, go_router routes + bottom-nav shell, theme, providers
+  app/                         app widget, go_router routes, theme, providers
   core/
     config/env.dart            build-time configuration (dart-define)
     errors/                    AppException with categories (permission, gps, exif, storage…)
@@ -150,13 +151,15 @@ lib/
     remote/                    GeocodingProvider + platform/Nominatim impls, weather
     repositories/              photos, templates, settings, geocoding (+cache, recents)
   features/
-    home/ camera/ location/ photo_editor/ stamp_editor/ templates/
-    exif_editor/ map_location/ gallery/ batch_editor/ settings/
+    home/          the single main screen
+    camera/        full-screen camera
+    photo_editor/  stamp text, stamp style and EXIF tabs; capture/save pipeline
+    location/ stamp_editor/ exif_editor/ map_location/ templates/(built-in designs)
   shared/widgets/              cards, chips, banners, thumbnails, colour picker
 ```
 
 - **State:** Riverpod 3 (`Notifier`/`StreamProvider`). Repositories expose change streams; `photosProvider` and `templatesProvider` rebuild automatically.
-- **Navigation:** go_router `StatefulShellRoute` (Home, Gallery, Templates, Settings) with a centre Camera action that opens the full-screen camera; editor, details, map, batch and template editor are full-screen routes.
+- **Navigation:** go_router with four routes: `/` (Home), `/camera`, `/editor/:id` and `/map-location`. There is no bottom bar.
 - **Rendering:** `StampLayout` ([stamp_painter.dart](lib/features/stamp_editor/services/stamp_painter.dart)) lays out and paints in image-pixel coordinates, scaled by the image's shorter side / 1080. The preview paints the same layout through a scaled canvas. Export decodes the original at full resolution, paints it plus the stamp into a `PictureRecorder`, reads raw RGBA and encodes it to JPEG **natively**, copying the source metadata and resetting orientation.
 - **Photo pipeline** ([photo_service.dart](lib/features/photo_editor/services/photo_service.dart)): capture → move into app storage as the preserved original → write capture EXIF (time, offset, GPS if enabled) and verify → optionally render the stamped export → thumbnail → DB record. Re-editing always regenerates from the preserved original and re-applies the photo's EXIF overrides, so metadata is never silently dropped.
 
@@ -193,8 +196,17 @@ Channel `com.gpscamera/image_native` (Dart side: [native_image_channel.dart](lib
 - **Very large images:** stamped exports are limited to 8192 px on the long side (GPU texture limit); the app warns if a photo was downscaled.
 - **Map snapshots** need online tiles (with consent) or an area already cached on the device; otherwise the photo is saved without the map and a message explains why.
 - **Language:** UI text is English. The Language setting changes date/number formats and system dialogs.
-- **Device gallery copies** are snapshots: later edits in the app don't change copies already exported (export again from Photo details).
+- **Device gallery copies** are snapshots: later edits in the app don't change copies already exported (use *Save to phone gallery* in the editor menu again).
 
 ## Licences
 
-Bundled fonts: Inter, Lora, Oswald (SIL OFL 1.1), Roboto Mono (Apache 2.0). Map data © OpenStreetMap contributors (ODbL). See *Settings › About › Open-source licences* in the app.
+Bundled fonts: Inter, Lora, Oswald (SIL OFL 1.1), Roboto Mono (Apache 2.0). Map data © OpenStreetMap contributors (ODbL). The app registers these in the Flutter licence registry.
+
+## App icon
+
+The icon is drawn in code by [tool/icon/generate_icon_test.dart](tool/icon/generate_icon_test.dart) (camera with a location pin in its lens, using the app's navy/royal palette). To change it, edit that file and run:
+
+```bash
+flutter test tool/icon/generate_icon_test.dart   # writes assets/icon/*.png
+dart run flutter_launcher_icons                  # Android (incl. adaptive + themed) and iOS icons
+```

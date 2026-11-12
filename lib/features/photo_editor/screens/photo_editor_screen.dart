@@ -17,7 +17,7 @@ import '../../../data/models/stamp_template_model.dart';
 import '../../../data/models/stamp_values.dart';
 import '../../../shared/widgets/common.dart';
 import '../../exif_editor/widgets/exif_editor_panel.dart';
-import '../../gallery/widgets/share_helper.dart';
+import '../widgets/share_helper.dart';
 import '../../stamp_editor/services/image_render_service.dart';
 import '../../stamp_editor/widgets/stamp_preview.dart';
 import '../../stamp_editor/widgets/stamp_style_editor.dart';
@@ -601,6 +601,17 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> with Sing
     if (mounted) context.pop();
   }
 
+  Future<void> _exportToDevice() async {
+    final p = _photo;
+    if (p == null) return;
+    try {
+      await ref.read(photoServiceProvider).exportToDevice(p);
+      if (mounted) showSnack(context, 'Saved to your phone gallery (album "${PhotoService.deviceAlbum}").');
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Future<void> _saveAsTemplate() async {
     final ctrl = TextEditingController(text: '${_style.name} (custom)');
     final name = await showDialog<String>(
@@ -664,8 +675,8 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> with Sing
                     await _discard();
                   case 'revert':
                     await _revert();
-                  case 'details':
-                    context.push(Routes.photo(p.id));
+                  case 'export':
+                    await _exportToDevice();
                   case 'template':
                     await _saveAsTemplate();
                 }
@@ -678,7 +689,9 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> with Sing
                 const PopupMenuItem(
                     value: 'template', child: ListTile(leading: Icon(Icons.bookmark_add_outlined), title: Text('Save style as template'))),
                 if (!widget.isNewCapture)
-                  const PopupMenuItem(value: 'details', child: ListTile(leading: Icon(Icons.info_outline), title: Text('Photo details'))),
+                  const PopupMenuItem(
+                      value: 'export',
+                      child: ListTile(leading: Icon(Icons.save_alt), title: Text('Save to phone gallery'))),
                 PopupMenuItem(
                   value: 'discard',
                   child: ListTile(

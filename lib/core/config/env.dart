@@ -34,11 +34,6 @@ abstract final class Env {
     defaultValue: 'https://api.open-meteo.com/v1/forecast',
   );
 
-  static const supportEmail = String.fromEnvironment('SUPPORT_EMAIL');
-  static const supportUrl = String.fromEnvironment('SUPPORT_URL');
-  static const privacyPolicyUrl = String.fromEnvironment('PRIVACY_POLICY_URL');
-  static const termsUrl = String.fromEnvironment('TERMS_URL');
-
   /// Identifies the app to public OSM services, as their usage policies require.
   static const userAgent = 'GPSCamera/1.0 (Flutter app; com.gpscamera.gps_camera)';
   static const packageName = 'com.gpscamera.gps_camera';
