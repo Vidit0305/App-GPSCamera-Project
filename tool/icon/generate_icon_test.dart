@@ -199,16 +199,20 @@ Future<void> _render(_Mode mode, String path) async {
   switch (mode) {
     case _Mode.full:
       _paintBackground(c);
-      c.translate(0, 6);
+      // Fill more of the tile so the icon reads large on the home screen.
+      c.translate(_s / 2, _s / 2);
+      c.scale(1.14);
+      c.translate(-_s / 2, -_s / 2 - 10);
       _paintGlyph(c, mono: false);
     case _Mode.background:
       _paintBackground(c);
     case _Mode.foreground:
     case _Mode.monochrome:
-      // Adaptive icons show roughly the centre 61 %: shrink the glyph to fit.
+      // Adaptive icons are masked to roughly the centre two-thirds; scale the
+      // glyph to fill that area while keeping the pin inside the safe circle.
       c.translate(_s / 2, _s / 2);
-      c.scale(0.6);
-      c.translate(-_s / 2, -_s / 2 + 10);
+      c.scale(0.86);
+      c.translate(-_s / 2, -_s / 2 - 12);
       _paintGlyph(c, mono: mode == _Mode.monochrome);
   }
   final image = await recorder.endRecording().toImage(_s.toInt(), _s.toInt());
