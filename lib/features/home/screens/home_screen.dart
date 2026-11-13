@@ -10,6 +10,7 @@ import '../../../core/permissions/permission_flows.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../data/models/photo_model.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../location/services/location_controller.dart';
 import '../../location/services/location_service.dart';
 import '../../photo_editor/services/photo_service.dart';
@@ -59,7 +60,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final ok = await confirm(
       context,
       title: 'Are you sure?',
-      message: 'This will permanently delete all $count photo${count == 1 ? '' : 's'} from GPS Camera. '
+      message:
+          'This will permanently delete all $count photo${count == 1 ? '' : 's'} from GPS Camera. '
           'This cannot be undone.\n\nCopies already saved to your phone\'s gallery are not affected.',
       confirmLabel: 'OK',
       destructive: true,
@@ -90,86 +92,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             slivers: [
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                sliver: SliverList.list(children: [
-                  // ---------------------------------------------- header
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(13),
-                        child: Image.asset('assets/icon/app_icon.png', width: 44, height: 44, cacheWidth: 132),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('GPS Camera', style: theme.textTheme.titleLarge),
-                            Text(DateFormat('EEEE, d MMMM').format(DateTime.now()), style: theme.textTheme.bodySmall),
-                          ],
+                sliver: SliverList.list(
+                  children: [
+                    // ---------------------------------------------- header
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Image.asset('assets/icon/app_icon.png', width: 44, height: 44, cacheWidth: 132),
                         ),
-                      ),
-                      _RoundIconButton(
-                        tooltip: isDark ? 'Light theme' : 'Dark theme',
-                        onPressed: _toggleTheme,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (child, a) => RotationTransition(
-                            turns: Tween(begin: 0.5, end: 1.0).animate(a),
-                            child: FadeTransition(opacity: a, child: child),
-                          ),
-                          child: Icon(
-                            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                            key: ValueKey(isDark),
-                            color: isDark ? const Color(0xFFFFC94D) : AppColors.navy,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('GPS Camera', style: theme.textTheme.titleLarge),
+                              Text(DateFormat('EEEE, d MMMM').format(DateTime.now()), style: theme.textTheme.bodySmall),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  if (!online) ...[
-                    const InfoBanner(
-                      message: 'You\'re offline. Taking and editing photos still works.',
-                      tone: ChipTone.info,
-                      icon: Icons.cloud_off_rounded,
+                        _RoundIconButton(
+                          tooltip: isDark ? 'Light theme' : 'Dark theme',
+                          onPressed: _toggleTheme,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, a) => RotationTransition(
+                              turns: Tween(begin: 0.5, end: 1.0).animate(a),
+                              child: FadeTransition(opacity: a, child: child),
+                            ),
+                            child: Icon(
+                              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                              key: ValueKey(isDark),
+                              color: isDark ? const Color(0xFFFFC94D) : AppColors.navy,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 20),
+                    if (!online) ...[
+                      const InfoBanner(
+                        message: 'You\'re offline. Taking and editing photos still works.',
+                        tone: ChipTone.info,
+                        icon: Icons.cloud_off_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    const _CameraHero(),
+                    const SizedBox(height: 16),
+                    const LocationStatusCard(),
+                    const SizedBox(height: 16),
+                    // ---------------------------------------------- clear history
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: () {
+                          Haptics.heavy();
+                          _clearAll(count);
+                        },
+                        icon: const Icon(Icons.delete_sweep_rounded),
+                        label: const Text('Clear all photos'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Text('Your photos', style: theme.textTheme.titleMedium),
+                        const SizedBox(width: 8),
+                        if (count > 0) StatusChip(label: '$count', tone: ChipTone.info, dense: true),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                   ],
-                  const _CameraHero(),
-                  const SizedBox(height: 16),
-                  const LocationStatusCard(),
-                  const SizedBox(height: 16),
-                  // ---------------------------------------------- clear history
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: () {
-                        Haptics.heavy();
-                        _clearAll(count);
-                      },
-                      icon: const Icon(Icons.delete_sweep_rounded),
-                      label: const Text('Clear all photos'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Text('Your photos', style: theme.textTheme.titleMedium),
-                      const SizedBox(width: 8),
-                      if (count > 0) StatusChip(label: '$count', tone: ChipTone.info, dense: true),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ]),
+                ),
               ),
               ...photos.when(
-                loading: () => [const SliverToBoxAdapter(child: SizedBox(height: 120, child: LoadingView()))],
+                loading: () => [const _PhotoGridSkeleton()],
                 error: (e, _) => [
                   SliverToBoxAdapter(
                     child: Padding(padding: const EdgeInsets.all(20), child: Text('Could not load photos: $e')),
@@ -177,7 +181,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
                 data: (list) => list.isEmpty
                     ? [const SliverToBoxAdapter(child: _EmptyPhotos())]
-                    : [_PhotoGrid(photos: [...list]..sort((a, b) => b.createdAt.compareTo(a.createdAt)))],
+                    : [
+                        _PhotoGrid(photos: [...list]..sort((a, b) => b.createdAt.compareTo(a.createdAt))),
+                      ],
               ),
               SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 24)),
             ],
@@ -235,7 +241,11 @@ class _CameraHero extends StatelessWidget {
       child: Stack(
         children: [
           // Decorative rings, echoing the app icon.
-          Positioned(right: -60, top: -60, child: CustomPaint(size: const Size(220, 220), painter: _RingsPainter())),
+          Positioned(
+            right: -60,
+            top: -60,
+            child: CustomPaint(size: const Size(220, 220), painter: _RingsPainter()),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
             child: Column(
@@ -360,18 +370,20 @@ class _PhotoGrid extends StatelessWidget {
                             colors: [Colors.transparent, Colors.black54],
                           ),
                         ),
-                        child: Row(children: [
-                          const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              p.city!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                p.city!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
                             ),
-                          ),
-                        ]),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -379,6 +391,33 @@ class _PhotoGrid extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Placeholder tiles while the photo list loads.
+class _PhotoGridSkeleton extends StatelessWidget {
+  const _PhotoGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverToBoxAdapter(
+        child: Shimmer(
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final cols = (c.maxWidth / 170).ceil().clamp(2, 6);
+              final w = (c.maxWidth - 10 * (cols - 1)) / cols;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [for (var i = 0; i < cols * 2; i++) SkeletonBox(width: w, height: w, radius: 16)],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

@@ -17,6 +17,7 @@ import '../../../data/models/location_model.dart';
 import '../../../data/models/stamp_template_model.dart';
 import '../../../data/models/weather_model.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../location/services/location_controller.dart';
 import '../../location/services/location_service.dart';
 import '../../photo_editor/services/photo_service.dart';
@@ -85,12 +86,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
   }
 
   ResolutionPreset get _preset => switch (ref.read(settingsProvider).resolution) {
-        CaptureResolution.medium => ResolutionPreset.medium,
-        CaptureResolution.high => ResolutionPreset.high,
-        CaptureResolution.veryHigh => ResolutionPreset.veryHigh,
-        CaptureResolution.ultraHigh => ResolutionPreset.ultraHigh,
-        CaptureResolution.max => ResolutionPreset.max,
-      };
+    CaptureResolution.medium => ResolutionPreset.medium,
+    CaptureResolution.high => ResolutionPreset.high,
+    CaptureResolution.veryHigh => ResolutionPreset.veryHigh,
+    CaptureResolution.ultraHigh => ResolutionPreset.ultraHigh,
+    CaptureResolution.max => ResolutionPreset.max,
+  };
 
   Future<void> _initCamera() async {
     if (_initializing) return;
@@ -301,7 +302,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
   Future<void> _capture() async {
     final c = _controller;
     if (c == null || !c.value.isInitialized || _processing || c.value.isTakingPicture) return;
-    final template = _template ??
+    final template =
+        _template ??
         ref.read(defaultTemplateProvider) ??
         await ref.read(templateRepositoryProvider).getById(ref.read(settingsProvider).defaultTemplateId);
     Haptics.heavy();
@@ -315,19 +317,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
     try {
       final shot = await c.takePicture();
       if (mounted) setState(() => _processingLabel = 'Saving photo & metadata…');
-      final result = await ref.read(photoServiceProvider).processCapture(
-            shot: shot,
-            location: location,
-            weather: weather,
-            template: template,
-            capturedAt: capturedAt,
-          );
+      final result = await ref
+          .read(photoServiceProvider)
+          .processCapture(shot: shot, location: location, weather: weather, template: template, capturedAt: capturedAt);
       if (location == null) {
-        ref.read(captureWarningsProvider.notifier).add(result.photo.id,
-            'No location was available, so this photo has no GPS data. You can choose a location in the editor.');
+        ref
+            .read(captureWarningsProvider.notifier)
+            .add(
+              result.photo.id,
+              'No location was available, so this photo has no GPS data. You can choose a location in the editor.',
+            );
       } else if (location.source == LocationSource.lastKnown) {
-        ref.read(captureWarningsProvider.notifier).add(result.photo.id,
-            'No live GPS fix – the last known position (${location.detectedAt != null ? Fmt.relative(location.detectedAt!) : 'earlier'}) was used.');
+        ref
+            .read(captureWarningsProvider.notifier)
+            .add(
+              result.photo.id,
+              'No live GPS fix – the last known position (${location.detectedAt != null ? Fmt.relative(location.detectedAt!) : 'earlier'}) was used.',
+            );
       }
       for (final w in result.warnings) {
         ref.read(captureWarningsProvider.notifier).add(result.photo.id, w);
@@ -355,26 +361,32 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
         body: SafeArea(
           child: switch (_status) {
             _CamStatus.noPermission => _Message(
-                icon: Icons.no_photography_outlined,
-                title: 'Camera access needed',
-                message: 'Allow camera access to take photos.',
-                primary: ('Grant access', _start),
-                secondary: ('Open settings', () => showOpenSettingsDialog(context,
-                    title: 'Camera access', message: 'Enable camera access for GPS Camera in system settings.')),
+              icon: Icons.no_photography_outlined,
+              title: 'Camera access needed',
+              message: 'Allow camera access to take photos.',
+              primary: ('Grant access', _start),
+              secondary: (
+                'Open settings',
+                () => showOpenSettingsDialog(
+                  context,
+                  title: 'Camera access',
+                  message: 'Enable camera access for GPS Camera in system settings.',
+                ),
               ),
+            ),
             _CamStatus.noCamera => _Message(
-                icon: Icons.videocam_off_outlined,
-                title: 'No camera found',
-                message: 'This device does not report any camera.',
-                primary: ('Close', () => context.pop()),
-              ),
+              icon: Icons.videocam_off_outlined,
+              title: 'No camera found',
+              message: 'This device does not report any camera.',
+              primary: ('Close', () => context.pop()),
+            ),
             _CamStatus.error => _Message(
-                icon: Icons.error_outline,
-                title: 'Camera could not start',
-                message: _error ?? 'Unknown error',
-                primary: ('Retry', _initCamera),
-                secondary: ('Close', () => context.pop()),
-              ),
+              icon: Icons.error_outline,
+              title: 'Camera could not start',
+              message: _error ?? 'Unknown error',
+              primary: ('Retry', _initCamera),
+              secondary: ('Close', () => context.pop()),
+            ),
             _ => _buildCamera(context),
           },
         ),
@@ -395,11 +407,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
               onFlash: ready ? _cycleFlash : null,
               onResolution: _pickResolution,
               onTemplate: _pickTemplate,
-              onExposure: ready && _maxExposure > _minExposure ? () => setState(() => _showExposure = !_showExposure) : null,
+              onExposure: ready && _maxExposure > _minExposure
+                  ? () => setState(() => _showExposure = !_showExposure)
+                  : null,
             ),
             Expanded(
               child: Center(
-                child: ready ? _buildPreview(c) : const CircularProgressIndicator(color: Colors.white),
+                child: ready
+                    ? _buildPreview(c)
+                    : const AspectRatio(
+                        aspectRatio: 3 / 4,
+                        child: Shimmer(
+                          forceDark: true,
+                          child: SkeletonBox(forceDark: true, radius: 0, height: double.infinity),
+                        ),
+                      ),
               ),
             ),
             if (ready && _maxZoom > _minZoom) _zoomBar(),
@@ -447,81 +469,91 @@ class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBinding
 
     return AspectRatio(
       aspectRatio: imageSize.width / imageSize.height,
-      child: LayoutBuilder(builder: (context, box) {
-        return GestureDetector(
-          onTapDown: (d) => _onTapPreview(d, box),
-          onScaleStart: (_) => _baseZoom = _zoom,
-          onScaleUpdate: (d) {
-            if (d.pointerCount >= 2) _setZoom(_baseZoom * d.scale);
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ClipRect(child: CameraPreview(c)),
-              if (template != null && settings.autoStamp)
-                IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.92,
-                    child: CustomPaint(
-                      painter: StampOverlayPainter(
-                        imageSize: imageSize,
-                        template: template,
-                        values: values,
-                        showMapPlaceholder: true,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          return GestureDetector(
+            onTapDown: (d) => _onTapPreview(d, box),
+            onScaleStart: (_) => _baseZoom = _zoom,
+            onScaleUpdate: (d) {
+              if (d.pointerCount >= 2) _setZoom(_baseZoom * d.scale);
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRect(child: CameraPreview(c)),
+                if (template != null && settings.autoStamp)
+                  IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.92,
+                      child: CustomPaint(
+                        painter: StampOverlayPainter(
+                          imageSize: imageSize,
+                          template: template,
+                          values: values,
+                          showMapPlaceholder: true,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              Positioned(top: 10, left: 10, right: 10, child: _GpsChip(state: loc, settings: settings)),
-              if (_focusPoint != null)
                 Positioned(
-                  left: _focusPoint!.dx - 32,
-                  top: _focusPoint!.dy - 32,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(border: Border.all(color: Colors.amber, width: 2), shape: BoxShape.circle),
-                    ),
-                  ),
-                ),
-              if (_showExposure)
-                Positioned(
-                  right: 4,
-                  top: 60,
-                  bottom: 60,
-                  child: RotatedBox(
-                    quarterTurns: 3,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: Colors.amber,
-                        thumbColor: Colors.amber,
-                        inactiveTrackColor: Colors.white30,
-                      ),
-                      child: Slider(
-                        value: _exposure.clamp(_minExposure, _maxExposure),
-                        min: _minExposure,
-                        max: _maxExposure,
-                        onChanged: (v) async {
-                          setState(() => _exposure = v);
-                          try {
-                            await c.setExposureOffset(v);
-                          } catch (_) {}
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              if (!settings.autoStamp)
-                Positioned(
-                  bottom: 10,
+                  top: 10,
                   left: 10,
-                  child: _Pill(text: 'Automatic stamp off', icon: Icons.layers_clear_outlined),
+                  right: 10,
+                  child: _GpsChip(state: loc, settings: settings),
                 ),
-            ],
-          ),
-        );
-      }),
+                if (_focusPoint != null)
+                  Positioned(
+                    left: _focusPoint!.dx - 32,
+                    top: _focusPoint!.dy - 32,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.amber, width: 2),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_showExposure)
+                  Positioned(
+                    right: 4,
+                    top: 60,
+                    bottom: 60,
+                    child: RotatedBox(
+                      quarterTurns: 3,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: Colors.amber,
+                          thumbColor: Colors.amber,
+                          inactiveTrackColor: Colors.white30,
+                        ),
+                        child: Slider(
+                          value: _exposure.clamp(_minExposure, _maxExposure),
+                          min: _minExposure,
+                          max: _maxExposure,
+                          onChanged: (v) async {
+                            setState(() => _exposure = v);
+                            try {
+                              await c.setExposureOffset(v);
+                            } catch (_) {}
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!settings.autoStamp)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: _Pill(text: 'Automatic stamp off', icon: Icons.layers_clear_outlined),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -572,7 +604,11 @@ class _GpsChip extends StatelessWidget {
     final now = DateTime.now();
     final (IconData icon, Color color, String text) = () {
       if (state.manual != null) {
-        return (Icons.edit_location_alt, Colors.lightBlueAccent, 'Manual: ${state.manual!.shortAddress.isEmpty ? 'selected point' : state.manual!.shortAddress}');
+        return (
+          Icons.edit_location_alt,
+          Colors.lightBlueAccent,
+          'Manual: ${state.manual!.shortAddress.isEmpty ? 'selected point' : state.manual!.shortAddress}',
+        );
       }
       switch (state.permission) {
         case LocationPermissionState.granted:
@@ -590,7 +626,9 @@ class _GpsChip extends StatelessWidget {
     }();
     return Row(
       children: [
-        Flexible(child: _Pill(text: text, icon: icon, iconColor: color)),
+        Flexible(
+          child: _Pill(text: text, icon: icon, iconColor: color),
+        ),
         const SizedBox(width: 6),
         _Pill(text: '${Fmt.date(now, settings)}  ${Fmt.time(now, settings)}', icon: Icons.schedule),
       ],
@@ -661,16 +699,32 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
         children: [
-          IconButton(onPressed: hx(onClose), icon: const Icon(Icons.close, color: Colors.white), tooltip: 'Close'),
+          IconButton(
+            onPressed: hx(onClose),
+            icon: const Icon(Icons.close, color: Colors.white),
+            tooltip: 'Close',
+          ),
           const Spacer(),
-          IconButton(onPressed: hx(onFlash), icon: Icon(flashIcon, color: Colors.white), tooltip: flashLabel),
+          IconButton(
+            onPressed: hx(onFlash),
+            icon: Icon(flashIcon, color: Colors.white),
+            tooltip: flashLabel,
+          ),
           IconButton(
             onPressed: hx(onExposure),
             icon: Icon(Icons.exposure, color: onExposure == null ? Colors.white30 : Colors.white),
             tooltip: 'Exposure',
           ),
-          IconButton(onPressed: hx(onResolution), icon: const Icon(Icons.high_quality_outlined, color: Colors.white), tooltip: 'Resolution'),
-          IconButton(onPressed: hx(onTemplate), icon: const Icon(Icons.layers_outlined, color: Colors.white), tooltip: 'Stamp template'),
+          IconButton(
+            onPressed: hx(onResolution),
+            icon: const Icon(Icons.high_quality_outlined, color: Colors.white),
+            tooltip: 'Resolution',
+          ),
+          IconButton(
+            onPressed: hx(onTemplate),
+            icon: const Icon(Icons.layers_outlined, color: Colors.white),
+            tooltip: 'Stamp template',
+          ),
         ],
       ),
     );
@@ -713,7 +767,10 @@ class _BottomBar extends ConsumerWidget {
               width: 78,
               height: 78,
               padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4)),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+              ),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 decoration: BoxDecoration(
@@ -736,7 +793,13 @@ class _BottomBar extends ConsumerWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.title, required this.message, required this.primary, this.secondary});
+  const _Message({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.primary,
+    this.secondary,
+  });
   final IconData icon;
   final String title;
   final String message;
@@ -753,9 +816,16 @@ class _Message extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.white70, size: 56),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
             const SizedBox(height: 20),
             FilledButton(onPressed: hx(primary.$2), child: Text(primary.$1)),
             if (secondary != null)

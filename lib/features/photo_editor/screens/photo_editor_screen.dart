@@ -15,6 +15,7 @@ import '../../../data/models/photo_model.dart';
 import '../../../data/models/stamp_template_model.dart';
 import '../../../data/models/stamp_values.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../stamp_editor/services/image_render_service.dart';
 import '../../stamp_editor/widgets/stamp_preview.dart';
 import '../services/photo_service.dart';
@@ -129,7 +130,8 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
       final settings = ref.read(settingsProvider);
       final base = photo.isOriginalPreserved ? photo.originalFilePath : photo.displayPath;
       final size = await ImageRenderService.imageSize(base);
-      final style = photo.stampStyle ??
+      final style =
+          photo.stampStyle ??
           ref.read(defaultTemplateProvider) ??
           await ref.read(templateRepositoryProvider).getById(settings.defaultTemplateId);
       if (!mounted) return;
@@ -137,7 +139,8 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
         _photo = photo;
         _imageSize = size;
         _style = style;
-        _values = photo.stampValues ??
+        _values =
+            photo.stampValues ??
             StampValueFactory.build(
               location: photo.detectedLocation,
               weather: photo.detectedWeather,
@@ -243,7 +246,10 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
       mapLat: picked.latitude,
       mapLon: picked.longitude,
     );
-    final (gps, fields) = ExifValueFactory.gpsFrom(picked.copyWith(detectedAt: p.capturedAt), fallbackTime: p.capturedAt);
+    final (gps, fields) = ExifValueFactory.gpsFrom(
+      picked.copyWith(detectedAt: p.capturedAt),
+      fallbackTime: p.capturedAt,
+    );
     final j = _exif.toJson()
       ..['latitude'] = gps.latitude
       ..['longitude'] = gps.longitude
@@ -269,7 +275,11 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
         if (mounted) showSnack(context, 'No address was found for this place.');
         return;
       }
-      final updated = p.copyWith(detectedLocation: d.withAddress(addr), addressPending: false, addressResolvedLater: true);
+      final updated = p.copyWith(
+        detectedLocation: d.withAddress(addr),
+        addressPending: false,
+        addressResolvedLater: true,
+      );
       await ref.read(photoServiceProvider).updateRecord(updated);
       setState(() => _photo = updated);
       await _fillEmptyFromDetected();
@@ -443,7 +453,7 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: LoadingView());
+    if (_loading) return _EditorSkeleton(title: widget.isNewCapture ? 'New photo' : 'Edit photo');
     final p = _photo;
     if (p == null) {
       return Scaffold(
@@ -467,7 +477,11 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
           title: Text(widget.isNewCapture ? 'New photo' : 'Edit photo'),
           leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: hx(_onPopRequested)),
           actions: [
-            IconButton(tooltip: 'Share', onPressed: _saving ? null : hx(_share), icon: const Icon(Icons.ios_share_rounded)),
+            IconButton(
+              tooltip: 'Share',
+              onPressed: _saving ? null : hx(_share),
+              icon: const Icon(Icons.ios_share_rounded),
+            ),
             PopupMenuButton<String>(
               onOpened: Haptics.tap,
               onSelected: (v) async {
@@ -483,9 +497,14 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(
-                    value: 'export', child: ListTile(leading: Icon(Icons.save_alt_rounded), title: Text('Save to phone gallery'))),
+                  value: 'export',
+                  child: ListTile(leading: Icon(Icons.save_alt_rounded), title: Text('Save to phone gallery')),
+                ),
                 if (widget.isNewCapture)
-                  const PopupMenuItem(value: 'retake', child: ListTile(leading: Icon(Icons.replay_rounded), title: Text('Retake'))),
+                  const PopupMenuItem(
+                    value: 'retake',
+                    child: ListTile(leading: Icon(Icons.replay_rounded), title: Text('Retake')),
+                  ),
                 PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
@@ -506,28 +525,36 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
               child: Container(
                 height: MediaQuery.sizeOf(context).height * 0.42,
                 color: Colors.black,
-                child: Stack(children: [
-                  Positioned.fill(
-                    child: StampPreview(
-                      imagePath: canStamp ? p.originalFilePath : p.displayPath,
-                      imageSize: _imageSize,
-                      template: _style,
-                      values: _values,
-                      map: _map,
-                      showStamp: _applyStamp && canStamp,
-                      onPositionChanged: (x, y) =>
-                          _setStyle(_style.copyWith(position: StampPosition.custom, customX: x, customY: y)),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: StampPreview(
+                        imagePath: canStamp ? p.originalFilePath : p.displayPath,
+                        imageSize: _imageSize,
+                        template: _style,
+                        values: _values,
+                        map: _map,
+                        showStamp: _applyStamp && canStamp,
+                        onPositionChanged: (x, y) =>
+                            _setStyle(_style.copyWith(position: StampPosition.custom, customX: x, customY: y)),
+                      ),
                     ),
-                  ),
-                  if (_saving) const Positioned.fill(child: ColoredBox(color: Colors.black45, child: LoadingView())),
-                ]),
+                    if (_saving)
+                      const Positioned.fill(
+                        child: ColoredBox(color: Colors.black45, child: LoadingView()),
+                      ),
+                  ],
+                ),
               ),
             ),
             if (_applyStamp && canStamp)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text('Tip: drag the stamp to move it.',
-                    textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+                child: Text(
+                  'Tip: drag the stamp to move it.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
               ),
             const SizedBox(height: 14),
 
@@ -577,23 +604,25 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: hx(_changeLocation),
-                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-                  label: const Text('Change location'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hx(_changeLocation),
+                    icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                    label: const Text('Change location'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: hx(_resetToDetected),
-                  icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                  label: const Text('Reset'),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hx(_resetToDetected),
+                    icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                    label: const Text('Reset'),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
 
             // ---------------- fields
             const SizedBox(height: 22),
@@ -622,25 +651,31 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-            child: Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _saving ? null : hx(() => _save(asNew: true)),
-                  child: const Text('Save as new'),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _saving ? null : hx(() => _save(asNew: true)),
+                    child: const Text('Save as new'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : hx(() => _save(asNew: false)),
-                  icon: _saving
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check_rounded, size: 20),
-                  label: const Text('Save'),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : hx(() => _save(asNew: false)),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check_rounded, size: 20),
+                    label: const Text('Save'),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       ),
@@ -671,6 +706,43 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
           ),
         ),
         onChanged: (v) => _setValue(f, v),
+      ),
+    );
+  }
+}
+
+/// Placeholder shaped like the editor while the photo opens.
+class _EditorSkeleton extends StatelessWidget {
+  const _EditorSkeleton({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Shimmer(
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          children: [
+            SkeletonBox(height: h * 0.42, radius: 20),
+            const SizedBox(height: 22),
+            const SkeletonBox(height: 56, radius: 20),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Expanded(child: SkeletonBox(height: 50, radius: 14)),
+                SizedBox(width: 10),
+                Expanded(child: SkeletonBox(height: 50, radius: 14)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const SkeletonLine(widthFactor: 0.45, height: 16),
+            const SizedBox(height: 14),
+            for (var i = 0; i < 4; i++) ...[const SkeletonBox(height: 52, radius: 14), const SizedBox(height: 10)],
+          ],
+        ),
       ),
     );
   }

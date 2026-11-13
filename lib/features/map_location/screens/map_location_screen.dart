@@ -16,6 +16,7 @@ import '../../../data/models/app_settings.dart';
 import '../../../data/models/location_model.dart';
 import '../../../data/remote/geocoding_provider.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../location/services/location_controller.dart';
 
 enum _AddrStatus { idle, loading, ok, notFound, offline, noConsent, failed }
@@ -408,11 +409,7 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
               ),
               children: [
                 if (settings.onlineAllowed)
-                  TileLayer(
-                    urlTemplate: Env.tileUrlTemplate,
-                    userAgentPackageName: Env.packageName,
-                    maxNativeZoom: 19,
-                  ),
+                  TileLayer(urlTemplate: Env.tileUrlTemplate, userAgentPackageName: Env.packageName, maxNativeZoom: 19),
                 if (settings.onlineAllowed)
                   SimpleAttributionWidget(
                     source: Text(Env.tileAttribution, style: const TextStyle(fontSize: 11)),
@@ -427,9 +424,12 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
               child: Center(
                 child: Transform.translate(
                   offset: const Offset(0, -22),
-                  child: Icon(Icons.location_on, size: 46, color: Colors.red.shade600, shadows: const [
-                    Shadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
-                  ]),
+                  child: Icon(
+                    Icons.location_on,
+                    size: 46,
+                    color: Colors.red.shade600,
+                    shadows: const [Shadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2))],
+                  ),
                 ),
               ),
             )
@@ -464,25 +464,20 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      suffixIcon: _searching
-                          ? const Padding(
-                              padding: EdgeInsets.all(14),
-                              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                      suffixIcon: (_search.text.isNotEmpty || showOverlay)
+                          ? IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                Haptics.tap();
+                                _search.clear();
+                                _searchFocus.unfocus();
+                                setState(() {
+                                  _results = const [];
+                                  _searchError = null;
+                                });
+                              },
                             )
-                          : (_search.text.isNotEmpty || showOverlay)
-                              ? IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    Haptics.tap();
-                                    _search.clear();
-                                    _searchFocus.unfocus();
-                                    setState(() {
-                                      _results = const [];
-                                      _searchError = null;
-                                    });
-                                  },
-                                )
-                              : null,
+                          : null,
                     ),
                   ),
                 ),
@@ -594,11 +589,37 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
       );
     } else if (_searchError != null) {
       content = ListTile(leading: const Icon(Icons.error_outline), title: Text(_searchError!));
-    } else if (_results.isEmpty) {
-      content = ListTile(
-        leading: const Icon(Icons.search),
-        title: Text(_searching ? 'Searching…' : 'Press search to look up “$query”'),
+    } else if (_results.isEmpty && _searching) {
+      // Skeleton result rows while the search runs.
+      content = Shimmer(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    SkeletonBox(width: 24, height: 24, radius: 12),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonLine(widthFactor: 0.6, height: 14),
+                          SizedBox(height: 8),
+                          SkeletonLine(widthFactor: 0.9),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       );
+    } else if (_results.isEmpty) {
+      content = ListTile(leading: const Icon(Icons.search), title: Text('Press search to look up “$query”'));
     } else {
       content = Column(
         mainAxisSize: MainAxisSize.min,
@@ -633,15 +654,20 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
     final (statusText, tone) = switch (_status) {
       _AddrStatus.idle => ('Move the map or tap to choose a point', ChipTone.neutral),
       _AddrStatus.loading => ('Looking up address…', ChipTone.info),
-      _AddrStatus.ok => ('Address found${_address?.provider == null ? '' : ' · ${_address!.provider}'}', ChipTone.success),
+      _AddrStatus.ok => (
+        'Address found${_address?.provider == null ? '' : ' · ${_address!.provider}'}',
+        ChipTone.success,
+      ),
       _AddrStatus.notFound => ('No address found here', ChipTone.warning),
       _AddrStatus.offline => (_statusMsg ?? 'Offline – address unavailable', ChipTone.warning),
       _AddrStatus.noConsent => ('Address lookup is off (online services disabled)', ChipTone.warning),
       _AddrStatus.failed => (_statusMsg ?? 'Address lookup failed', ChipTone.error),
     };
-    final shortAddr = [_fields[_F.city]!.text, _fields[_F.state]!.text, _fields[_F.country]!.text]
-        .where((e) => e.trim().isNotEmpty)
-        .join(', ');
+    final shortAddr = [
+      _fields[_F.city]!.text,
+      _fields[_F.state]!.text,
+      _fields[_F.country]!.text,
+    ].where((e) => e.trim().isNotEmpty).join(', ');
 
     return ListView(
       controller: controller,
@@ -667,10 +693,20 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
         if (!_selected)
           Text('No point selected yet', style: t.textTheme.titleMedium)
         else ...[
-          Text(shortAddr.isNotEmpty ? shortAddr : 'Selected point', style: t.textTheme.titleMedium),
+          if (shortAddr.isEmpty && _status == _AddrStatus.loading)
+            const Shimmer(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 3),
+                child: SkeletonLine(widthFactor: 0.6, height: 16),
+              ),
+            )
+          else
+            Text(shortAddr.isNotEmpty ? shortAddr : 'Selected point', style: t.textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text(Fmt.latLng(_center.latitude, _center.longitude, settings.coordinateFormat),
-              style: t.textTheme.bodyMedium),
+          Text(
+            Fmt.latLng(_center.latitude, _center.longitude, settings.coordinateFormat),
+            style: t.textTheme.bodyMedium,
+          ),
           if (_fields[_F.address]!.text.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(_fields[_F.address]!.text, style: t.textTheme.bodySmall, maxLines: 3, overflow: TextOverflow.ellipsis),
@@ -679,7 +715,12 @@ class _MapLocationScreenState extends ConsumerState<MapLocationScreen> {
         const SizedBox(height: 8),
         Row(
           children: [
-            Flexible(child: StatusChip(label: statusText, tone: tone)),
+            if (_status == _AddrStatus.loading)
+              const Shimmer(child: SkeletonBox(width: 150, height: 26, radius: 13))
+            else
+              Flexible(
+                child: StatusChip(label: statusText, tone: tone),
+              ),
             if (_status == _AddrStatus.failed || _status == _AddrStatus.offline)
               TextButton(onPressed: hx(() => _scheduleGeocode(immediate: true)), child: const Text('Retry')),
           ],

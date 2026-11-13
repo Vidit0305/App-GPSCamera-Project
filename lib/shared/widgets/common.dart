@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/colors.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/utils/haptics.dart';
+import 'skeleton.dart';
 
 /// Rounded card with consistent padding.
 class AppCard extends StatelessWidget {
@@ -28,15 +29,26 @@ class AppCard extends StatelessWidget {
         boxShadow: dark
             ? null
             : [
-                BoxShadow(color: const Color(0xFF0B1B3F).withValues(alpha: 0.06), blurRadius: 24, offset: const Offset(0, 8)),
-                BoxShadow(color: const Color(0xFF0B1B3F).withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 1)),
+                BoxShadow(
+                  color: const Color(0xFF0B1B3F).withValues(alpha: 0.06),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF0B1B3F).withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
               ],
       ),
       child: Material(
         type: MaterialType.transparency,
         borderRadius: radius,
         clipBehavior: Clip.antiAlias,
-        child: InkWell(onTap: hx(onTap), child: Padding(padding: padding, child: child)),
+        child: InkWell(
+          onTap: hx(onTap),
+          child: Padding(padding: padding, child: child),
+        ),
       ),
     );
   }
@@ -233,6 +245,20 @@ class PhotoThumb extends StatelessWidget {
       fit: fit,
       cacheWidth: (size * dpr).round(),
       gaplessPlayback: true,
+      // Skeleton until the image is decoded, then a quick fade-in.
+      frameBuilder: (context, child, frame, wasSync) {
+        if (wasSync) return child;
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            if (frame == null)
+              const Shimmer(
+                child: SkeletonBox(radius: 0, height: double.infinity, width: double.infinity),
+              ),
+            AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 220), child: child),
+          ],
+        );
+      },
       errorBuilder: (_, _, _) => ColoredBox(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
         child: const Center(child: Icon(Icons.broken_image_outlined)),
@@ -247,12 +273,14 @@ void showSnack(BuildContext context, String message, {bool error = false, SnackB
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
   messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(SnackBar(
-    content: Text(message),
-    backgroundColor: error ? AppColors.error : null,
-    action: action,
-    duration: Duration(seconds: error ? 6 : 3),
-  ));
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error ? AppColors.error : null,
+      action: action,
+      duration: Duration(seconds: error ? 6 : 3),
+    ),
+  );
 }
 
 void showError(BuildContext context, Object error) =>
@@ -294,11 +322,13 @@ Future<T> runWithProgress<T>(BuildContext context, String message, Future<T> Fun
     builder: (_) => PopScope(
       canPop: false,
       child: AlertDialog(
-        content: Row(children: [
-          const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)),
-          const SizedBox(width: 20),
-          Expanded(child: Text(message)),
-        ]),
+        content: Row(
+          children: [
+            const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)),
+            const SizedBox(width: 20),
+            Expanded(child: Text(message)),
+          ],
+        ),
       ),
     ),
   );
